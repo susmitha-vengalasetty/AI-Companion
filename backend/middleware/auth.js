@@ -28,7 +28,17 @@ export const protect = async (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  const isAdminByEmail = Boolean(
+    process.env.ADMIN_EMAIL &&
+      req.user &&
+      req.user.email &&
+      req.user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase()
+  );
+
+  if (req.user && (req.user.role === 'admin' || isAdminByEmail)) {
+    if (isAdminByEmail) {
+      req.user.role = 'admin';
+    }
     next();
   } else {
     res.status(403).json({ success: false, message: 'Access denied: Admin privileges required' });

@@ -7,6 +7,7 @@ import { Register } from './pages/Register';
 import { Home } from './pages/Home';
 import { SpaceDashboard } from './pages/SpaceDashboard';
 import { ProjectDashboard } from './pages/ProjectDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -24,6 +25,20 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -75,6 +90,14 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="spaces/:spaceId" element={<SpaceDashboard />} />
           <Route path="projects/:projectId" element={<ProjectDashboard />} />
+          <Route
+            path="admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

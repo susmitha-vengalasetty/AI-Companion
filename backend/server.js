@@ -11,6 +11,7 @@ import searchRoutes from './routes/searchRoutes.js';
 import tutorRoutes from './routes/tutorRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
 import growthRoutes from './routes/growthRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -38,6 +39,7 @@ app.use('/api/projects/:projectId/tutor', tutorRoutes);
 app.use('/api/projects/:projectId/quiz', quizRoutes);
 app.use('/api/projects/:projectId/growth', growthRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', materialRoutes);
 app.use('/api', searchRoutes);
 
