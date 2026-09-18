@@ -81,6 +81,20 @@ export const MaterialsTab = ({ projectId }) => {
     };
   }, [materials, projectId]);
 
+  const isQuotaError = (status, textOrMsg = '') => {
+    const str = String(textOrMsg || '').toLowerCase();
+    return (
+      status === 429 ||
+      str.includes('429') ||
+      str.includes('resource_exhausted') ||
+      str.includes('embedding_rate_limited') ||
+      str.includes('rate limit') ||
+      str.includes('quota exceeded') ||
+      str.includes('quota_exceeded') ||
+      str.includes('toomanyrequests')
+    );
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -112,16 +126,39 @@ export const MaterialsTab = ({ projectId }) => {
         body: formData,
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const rawText = await response.text().catch(() => '');
+      let data = null;
+
+      if (contentType.includes('application/json') && rawText.trim()) {
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          // If JSON parsing fails, retain rawText as non-JSON content
+        }
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || 'PDF Upload failed');
+        const errorMsg = data?.message || rawText || '';
+        if (isQuotaError(response.status, errorMsg)) {
+          throw new Error(
+            'PDF processing is temporarily unavailable because the Gemini API quota/rate limit has been reached. Please try again after the quota resets.'
+          );
+        } else if (contentType.includes('application/json') && data?.message) {
+          throw new Error(data.message);
+        } else {
+          throw new Error('PDF processing failed because the server returned an unexpected response. Please try again later.');
+        }
       }
 
       if (fileInputRef.current) fileInputRef.current.value = '';
       await fetchMaterials();
     } catch (err) {
-      setUploadError(err.message || 'Failed to upload PDF');
+      if (err.name === 'TypeError' || (err.message && err.message.toLowerCase().includes('fetch'))) {
+        setUploadError('Unable to reach the server. Please check your connection and try again.');
+      } else {
+        setUploadError(err.message || 'Failed to upload PDF');
+      }
     } finally {
       setUploading(false);
     }
@@ -132,7 +169,12 @@ export const MaterialsTab = ({ projectId }) => {
       await apiFetch(`/materials/${materialId}/retry`, { method: 'POST' });
       await fetchMaterials();
     } catch (err) {
-      alert(err.message || 'Failed to retry processing');
+      const msg = err.message || '';
+      if (isQuotaError(0, msg)) {
+        alert('PDF processing is temporarily unavailable because the Gemini API quota/rate limit has been reached. Please try again after the quota resets.');
+      } else {
+        alert(msg || 'Failed to retry processing');
+      }
     }
   };
 
